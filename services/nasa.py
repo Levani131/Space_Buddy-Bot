@@ -189,3 +189,4 @@ def fetch_apod(target_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
 
 def fetch_today_asteroids() -> List[Dict[str, Any]]:
     return default_nasa_service.fetch_today_asteroids()
+

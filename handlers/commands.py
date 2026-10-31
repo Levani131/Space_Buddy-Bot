@@ -130,3 +130,4 @@ async def asteroids(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
     await update.message.reply_text("\n".join(response_lines), parse_mode="Markdown")
+

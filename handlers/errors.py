@@ -16,3 +16,4 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
         except Exception as e:
             logger.error(f"Failed to send error notification message: {e}")
+
