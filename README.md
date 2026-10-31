@@ -65,16 +65,24 @@ Open Telegram, search for your bot username, and test the commands:
 
 ---
 
-## 📁 Project Structure
+## 📁 Refactored Project Structure
 
 ```text
-├── bot.py             # Main Telegram bot handlers and polling logic
-├── main.py            # NASA API service integrations (APOD & Asteroids)
-├── nasa_service.py    # Bridge module exposing NASA API service functions
-├── requirements.txt   # List of Python dependencies
-├── .env.example       # Template for required environment variables
-├── .gitignore         # Ignores .env, .venv/, cache, and IDE files
-├── README.md          # Setup guide and documentation
-└── screenshot.png     # Screenshot of the bot running in Telegram
+├── config.py              # Centralized environment configuration and validator
+├── bot.py                 # Bot application builder and polling entry point
+├── main.py                # Primary entrypoint alias & backward-compatible runner
+├── nasa_service.py        # Root service shim for backwards compatibility
+├── handlers/
+│   ├── __init__.py        # Handlers exports
+│   ├── commands.py        # /start, /help, /apod, and /asteroids handlers
+│   └── errors.py          # Global Telegram error handler
+├── services/
+│   ├── __init__.py        # Services exports
+│   └── nasa.py            # NasaService class with validation, caching & fallback
+├── requirements.txt       # List of Python dependencies
+├── .env.example           # Template for required environment variables
+├── .gitignore             # Ignores .env, .venv/, cache, and IDE files
+├── PROJECT_BLUEPRINT.md   # Architectural design and specifications
+├── TODO.md                # Project roadmap and technical analysis
+└── README.md              # Setup guide and documentation
 ```
-

@@ -1,5 +1,4 @@
-"""NASA service module bridging functions from main.py."""
-from main import fetch_apod, fetch_today_asteroids, safe_get, NASA_API_KEY
+"""NASA service interface for backwards compatibility with assignment structure."""
+from services.nasa import NasaService, default_nasa_service, fetch_apod, fetch_today_asteroids
 
-__all__ = ["fetch_apod", "fetch_today_asteroids", "safe_get", "NASA_API_KEY"]
-
+__all__ = ["NasaService", "default_nasa_service", "fetch_apod", "fetch_today_asteroids"]
