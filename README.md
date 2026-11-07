@@ -12,6 +12,20 @@ SpaceBuddy is a Telegram bot that brings astronomy directly to your chat. It del
 
 ---
 
+## ✨ Features
+
+- **Astronomy Picture of the Day (`/apod`)**:
+  - View **today's** APOD by default.
+  - View any historical APOD from the **past year** by passing a date: `/apod YYYY-MM-DD` (e.g., `/apod 2026-10-30`).
+  - Interactive **Inline Keyboard**: Quick buttons for `[📅 Yesterday]`, `[🎲 Random Date]`, and `[ℹ️ Custom Date Help]`.
+  - Strict validation: dates must be in `YYYY-MM-DD` format, cannot be in the future, and must be within the past 365 days.
+  - Resilient dual-endpoint routing and in-memory caching for sub-millisecond responses.
+- **Planetary Defense Tracking (`/asteroids`)**:
+  - Scans today's near-Earth objects (NEOs) from NASA's NeoWs feed.
+  - Ranks and displays the top 5 largest approaching asteroids with size, speed, and hazard alerts.
+
+---
+
 ## 🛠️ Setup Instructions (Steps 2–5)
 
 Follow these steps to set up and run SpaceBuddy locally:
@@ -30,7 +44,7 @@ source .venv/bin/activate
 ```
 
 ### Step 3: Install Required Dependencies
-Install the required packages (`python-telegram-bot`, `requests`, and `python-dotenv`):
+Install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
@@ -59,26 +73,42 @@ python bot.py
 ```
 Open Telegram, search for your bot username, and test the commands:
 - `/start` — Greets you by your first name.
-- `/help` — Lists all available bot commands.
-- `/apod` — Fetches today's Astronomy Picture of the Day with an image and description (or pass a date like `/apod 2026-10-25`).
+- `/help` — Lists all available bot commands and date guidelines.
+- `/apod` — Fetches today's Astronomy Picture of the Day.
+- `/apod 2026-10-30` — Fetches the APOD for a specific date in the past year.
 - `/asteroids` — Ranks and displays today's top 5 largest near-Earth objects.
 
 ---
 
-## 📁 Refactored Project Structure
+## 🧪 Running Automated Tests
+
+Run the test suite with `pytest`:
+```bash
+pytest -v
+```
+
+---
+
+## 📁 Project Structure
 
 ```text
 ├── config.py              # Centralized environment configuration and validator
-├── bot.py                 # Bot application builder and polling entry point
+├── bot.py                 # Bot application builder, polling entry point & callback router
 ├── main.py                # Primary entrypoint alias & backward-compatible runner
 ├── nasa_service.py        # Root service shim for backwards compatibility
 ├── handlers/
 │   ├── __init__.py        # Handlers exports
-│   ├── commands.py        # /start, /help, /apod, and /asteroids handlers
+│   ├── commands.py        # /start, /help, /apod (with date picker), and /asteroids handlers
 │   └── errors.py          # Global Telegram error handler
 ├── services/
 │   ├── __init__.py        # Services exports
-│   └── nasa.py            # NasaService class with validation, caching & fallback
+│   └── nasa.py            # NasaService class (caching, date validation, resilient APIs)
+├── tests/
+│   ├── conftest.py        # Shared test fixtures & mocks
+│   ├── test_bot.py        # Application builder & shim tests
+│   ├── test_config.py     # Configuration unit tests
+│   ├── test_handlers.py   # Command & callback query unit tests
+│   └── test_nasa_service.py # NASA API & date validation unit tests
 ├── requirements.txt       # List of Python dependencies
 ├── .env.example           # Template for required environment variables
 ├── .gitignore             # Ignores .env, .venv/, cache, and IDE files

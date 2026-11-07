@@ -2,11 +2,11 @@
 from bot import create_app
 import main
 import nasa_service
-from telegram.ext import CommandHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler
 
 
 def test_create_app_registers_all_handlers():
-    """Verify create_app registers start, help, apod, and asteroids handlers."""
+    """Verify create_app registers start, help, apod, and asteroids handlers as well as callback queries."""
     app = create_app()
     handlers = app.handlers.get(0, [])
 
@@ -18,6 +18,9 @@ def test_create_app_registers_all_handlers():
     assert "help" in registered_commands
     assert "apod" in registered_commands
     assert "asteroids" in registered_commands
+
+    callback_handlers = [h for h in handlers if isinstance(h, CallbackQueryHandler)]
+    assert len(callback_handlers) >= 1
     assert len(app.error_handlers) >= 1
 
 

@@ -7,16 +7,13 @@ Provides resilient access to:
 import html
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from config import config
 
 logger = logging.getLogger(__name__)
-
-# The very first NASA APOD was published on June 16, 1995
-APOD_MIN_DATE = date(1995, 6, 16)
 
 
 class NasaService:
@@ -30,17 +27,20 @@ class NasaService:
         self._apod_cache: Dict[str, Dict[str, Any]] = {}
 
     def validate_date(self, date_str: str) -> Tuple[bool, Optional[str]]:
-        """Validate if a string is a valid APOD date (YYYY-MM-DD between 1995-06-16 and today)."""
+        """Validate if a string is a valid APOD date (YYYY-MM-DD within the last year, not in future)."""
         try:
             parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
-            return False, "Date must be in YYYY-MM-DD format (e.g., 2026-10-25)."
+            return False, "Invalid date format. Please use YYYY-MM-DD (e.g., /apod 2026-10-30)."
 
         today = date.today()
-        if parsed_date < APOD_MIN_DATE:
-            return False, f"APOD archive begins on {APOD_MIN_DATE.isoformat()}."
+        one_year_ago = today - timedelta(days=365)
+
         if parsed_date > today:
-            return False, "Cannot fetch APOD for future dates."
+            return False, f"Date cannot be in the future. Please select a date on or before today ({today.isoformat()})."
+
+        if parsed_date < one_year_ago:
+            return False, f"Date must be within the last year (between {one_year_ago.isoformat()} and {today.isoformat()})."
 
         return True, None
 
@@ -107,11 +107,50 @@ class NasaService:
             logger.debug(f"WP-JSON apod-basic fetch failed: {e}")
             return None
 
+    def _fetch_from_archive_redirect(self, target_date: str) -> Optional[Dict[str, Any]]:
+        """Fetch title and image from the official APOD archive redirect page.
+        
+        Acts as a fallback when legacy api.nasa.gov scraper returns the fallback logo.
+        """
+        try:
+            dt = datetime.strptime(target_date, "%Y-%m-%d")
+            yymmdd = dt.strftime("%y%m%d")
+            url = f"https://apod.nasa.gov/apod/ap{yymmdd}.html"
+            resp = requests.get(url, headers=self.headers, timeout=self.timeout)
+            if resp.status_code != 200:
+                return None
+
+            title_m = re.search(r'property="og:title"\s+content="([^"]+)"', resp.text)
+            img_m = re.search(r'property="og:image"\s+content="([^"]+)"', resp.text)
+            desc_m = re.search(r'property="og:description"\s+content="([^"]+)"', resp.text)
+
+            if not img_m:
+                return None
+
+            raw_title = title_m.group(1) if title_m else "Astronomy Picture of the Day"
+            clean_title = re.sub(r"^APOD:\s*\d{4}\s+[A-Za-z]+\s+\d+\s*-\s*", "", raw_title)
+            clean_title = re.sub(r"\s*-\s*NASA Science$", "", clean_title).strip()
+
+            raw_desc = desc_m.group(1) if desc_m else "Astronomy Picture of the Day from NASA."
+            clean_exp = html.unescape(raw_desc).strip()
+
+            return {
+                "title": clean_title,
+                "explanation": clean_exp,
+                "media_type": "image",
+                "url": img_m.group(1),
+                "hdurl": img_m.group(1),
+                "date": target_date,
+            }
+        except Exception as e:
+            logger.debug(f"Archive redirect scrape failed for {target_date}: {e}")
+            return None
+
     def fetch_apod(self, target_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch Astronomy Picture of the Day.
         
-        Checks memory cache first, then queries NASA Science endpoint,
-        and finally falls back to legacy api.nasa.gov if required.
+        Checks memory cache first, queries NASA Science endpoint,
+        and falls back to legacy api.nasa.gov / archive redirect if required.
         """
         cache_key = target_date or date.today().isoformat()
         if cache_key in self._apod_cache:
@@ -131,6 +170,10 @@ class NasaService:
 
             if legacy_data and legacy_data.get("title") != "NASA Science" and "nasa-logo" not in legacy_data.get("url", ""):
                 data = legacy_data
+
+        # 3. If target_date is specified and still no data or got buggy logo, try archive redirect
+        if not data and target_date:
+            data = self._fetch_from_archive_redirect(target_date)
 
         if data:
             self._apod_cache[cache_key] = data
@@ -189,4 +232,3 @@ def fetch_apod(target_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
 
 def fetch_today_asteroids() -> List[Dict[str, Any]]:
     return default_nasa_service.fetch_today_asteroids()
-
