@@ -1,9 +1,9 @@
 """Main entry point for SpaceBuddy Telegram bot."""
 import logging
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import config
-from handlers.commands import apod, asteroids, help_cmd, start
+from handlers.commands import apod, apod_callback, asteroids, help_cmd, start
 from handlers.errors import on_error
 
 # Configure application logging
@@ -23,6 +23,9 @@ def create_app() -> Application:
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("apod", apod))
     app.add_handler(CommandHandler("asteroids", asteroids))
+
+    # Register interactive callback query handlers for date selection
+    app.add_handler(CallbackQueryHandler(apod_callback, pattern="^apod_"))
 
     # Register error handler
     app.add_error_handler(on_error)
