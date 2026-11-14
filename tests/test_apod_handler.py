@@ -180,3 +180,67 @@ async def test_send_apod_content_video_handling(mock_update, mock_context):
     assert "Tour of the Moon" in kwargs["text"]
     assert kwargs["reply_markup"] is not None
 
+
+@pytest.mark.asyncio
+async def test_apod_command_edge_cases_dates(mock_update, mock_context):
+    """Verify /apod rejects 1985-01-01 (before APOD), 'tomorrow', and future dates."""
+    # 1. Date before APOD launch (1985-01-01)
+    mock_context.args = ["1985-01-01"]
+    await apod(mock_update, mock_context)
+    mock_update.message.reply_text.assert_called_once()
+    args, _ = mock_update.message.reply_text.call_args
+    assert "1995-06-16" in args[0]
+
+    # 2. Malformed non-ISO string ('tomorrow')
+    mock_update.message.reply_text.reset_mock()
+    mock_context.args = ["tomorrow"]
+    await apod(mock_update, mock_context)
+    mock_update.message.reply_text.assert_called_once()
+    args, _ = mock_update.message.reply_text.call_args
+    assert "YYYY-MM-DD" in args[0]
+
+    # 3. Future date
+    mock_update.message.reply_text.reset_mock()
+    future_date = (date.today() + timedelta(days=10)).isoformat()
+    mock_context.args = [future_date]
+    await apod(mock_update, mock_context)
+    mock_update.message.reply_text.assert_called_once()
+    args, _ = mock_update.message.reply_text.call_args
+    assert "future" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_apod_command_user_with_none_username(mock_update, mock_context):
+    """Verify /apod registers user with username=None in SQLite without error."""
+    test_db = DatabaseManager(":memory:")
+    mock_context.args = []
+
+    mock_update.effective_user.id = 555
+    mock_update.effective_user.username = None
+    mock_update.effective_user.first_name = "Anonymous Voyager"
+
+    fake_apod = {
+        "title": "Cosmic Void",
+        "explanation": "Deep empty space.",
+        "media_type": "image",
+        "url": "https://assets.science.nasa.gov/apod/void.jpg",
+        "date": date.today().isoformat(),
+    }
+
+    mock_status = MagicMock()
+    mock_status.delete = AsyncMock()
+    mock_context.bot.send_message = AsyncMock(return_value=mock_status)
+    mock_context.bot.send_photo = AsyncMock()
+
+    with patch("handlers.apod_handler.db", test_db), \
+         patch("services.nasa.default_nasa_service.fetch_apod", return_value=fake_apod):
+        await apod(mock_update, mock_context)
+
+    user = test_db.get_user(555)
+    assert user is not None
+    assert user["user_id"] == 555
+    assert user["username"] is None
+    assert user["first_name"] == "Anonymous Voyager"
+
+    test_db.close()
+
