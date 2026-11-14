@@ -1,9 +1,11 @@
 """Unit tests for Telegram command and callback handlers."""
 from datetime import date, timedelta
+import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from handlers.commands import apod, apod_callback, asteroids, help_cmd, start
+from database.db_manager import DatabaseManager
+from handlers.commands import apod, apod_callback, asteroids, help_cmd, save_apod_callback, start
 from handlers.errors import on_error
 
 
@@ -237,3 +239,54 @@ async def test_on_error_handler(mock_update, mock_context):
     mock_update.effective_message.reply_text.assert_called_once()
     args, _ = mock_update.effective_message.reply_text.call_args
     assert "Oops! Something went wrong" in args[0]
+
+
+class TestSaveApodCallbackIntegration(unittest.IsolatedAsyncioTestCase):
+    """Integration test suite verifying offline save_apod callback flow using unittest."""
+
+    async def test_save_apod_callback_integration(self):
+        """Verify 'save_apod:2024-05-12' callback stores photo in :memory: DB and answers with toast."""
+        # 1. Use DatabaseManager(":memory:") for the database
+        db = DatabaseManager(":memory:")
+
+        # 2. Mock fake NASA APOD dictionary
+        fake_apod = {
+            "date": "2024-05-12",
+            "title": "Mock Nebula",
+            "url": "https://nasa.gov/nebula.jpg",
+        }
+
+        # 3. Create a MagicMock() simulating a Telegram CallbackQuery
+        call = MagicMock()
+        call.id = "query_42"
+        call.data = "save_apod:2024-05-12"
+        call.from_user.id = 42
+        call.from_user.username = "skywatcher42"
+        call.from_user.first_name = "Arthur"
+
+        mock_update = MagicMock()
+        mock_update.callback_query = call
+        mock_update.effective_user = call.from_user
+
+        mock_context = MagicMock()
+        mock_context.bot.answer_callback_query = AsyncMock()
+
+        # 4. Trigger callback handler and assert storage in :memory: DB & toast notification
+        with patch("handlers.apod_handler.db", db), \
+             patch("services.nasa.default_nasa_service.fetch_apod", return_value=fake_apod):
+            await save_apod_callback(mock_update, mock_context)
+
+        # Assert photo is stored in the :memory: SQLite database
+        self.assertEqual(len(db.get_user_favorites(42)), 1)
+        fav = db.get_user_favorites(42)[0]
+        self.assertEqual(fav["apod_date"], "2024-05-12")
+        self.assertEqual(fav["title"], "Mock Nebula")
+        self.assertEqual(fav["media_url"], "https://nasa.gov/nebula.jpg")
+
+        # Assert bot.answer_callback_query was called once with success message
+        mock_context.bot.answer_callback_query.assert_called_once()
+        _, kwargs = mock_context.bot.answer_callback_query.call_args
+        self.assertEqual(kwargs["callback_query_id"], "query_42")
+        self.assertIn("Saved to favorites", kwargs["text"])
+
+        db.close()
