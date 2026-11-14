@@ -1,7 +1,36 @@
 """Unit tests for NasaService (APOD, NeoWs, caching, validation)."""
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
-from services.nasa import NasaService
+from services.nasa import NasaService, validate_apod_date
+
+
+def test_validate_apod_date_function():
+    """Verify validate_apod_date checks YYYY-MM-DD between 1995-06-16 and today."""
+    # Valid date
+    is_valid, err = validate_apod_date("2024-05-12")
+    assert is_valid is True
+    assert err == ""
+
+    # Exactly APOD launch date
+    is_valid, err = validate_apod_date("1995-06-16")
+    assert is_valid is True
+    assert err == ""
+
+    # One day before launch date
+    is_valid, err = validate_apod_date("1995-06-15")
+    assert is_valid is False
+    assert "1995-06-16" in err
+
+    # Invalid format
+    is_valid, err = validate_apod_date("not-a-date")
+    assert is_valid is False
+    assert "YYYY-MM-DD" in err
+
+    # Future date
+    future_date = (date.today() + timedelta(days=2)).isoformat()
+    is_valid, err = validate_apod_date(future_date)
+    assert is_valid is False
+    assert "future" in err.lower()
 
 
 def test_validate_date_valid_recent():
@@ -32,13 +61,13 @@ def test_validate_date_invalid_format():
         assert "YYYY-MM-DD" in err
 
 
-def test_validate_date_older_than_one_year():
-    """Dates older than 1 year (365 days ago) should be rejected."""
+def test_validate_date_older_than_apod_launch():
+    """Dates older than APOD launch date (1995-06-16) should be rejected."""
     service = NasaService(api_key="TEST_KEY")
-    old_date = (date.today() - timedelta(days=370)).isoformat()
+    old_date = "1995-06-15"
     is_valid, err = service.validate_date(old_date)
     assert is_valid is False
-    assert "within the last year" in err.lower()
+    assert "1995-06-16" in err
 
 
 def test_validate_date_future():

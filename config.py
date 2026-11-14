@@ -12,6 +12,7 @@ load_dotenv()
 class Config:
     BOT_TOKEN: str
     NASA_API_KEY: str = "DEMO_KEY"
+    DATABASE_PATH: str = "space_buddy.db"
     LOG_LEVEL: str = "INFO"
     USER_AGENT: str = "SpaceBuddy/1.0 (Mozilla/5.0, Windows NT 10.0; Win64; x64)"
 
@@ -23,11 +24,13 @@ def load_config() -> Config:
         sys.exit("Error: BOT_TOKEN is missing in .env. Please add your Telegram Bot Token.")
         
     nasa_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
+    db_path = os.getenv("DATABASE_PATH", "space_buddy.db")
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
     return Config(
         BOT_TOKEN=token.strip().strip('"').strip("'"),
         NASA_API_KEY=nasa_key.strip().strip('"').strip("'"),
+        DATABASE_PATH=db_path.strip().strip('"').strip("'"),
         LOG_LEVEL=log_level
     )
 

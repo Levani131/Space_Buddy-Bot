@@ -16,6 +16,32 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
+APOD_LAUNCH_DATE = date(1995, 6, 16)
+
+
+def validate_apod_date(date_str: str) -> Tuple[bool, str]:
+    """Validate that date_str is in YYYY-MM-DD format and falls between 1995-06-16 and today.
+
+    Args:
+        date_str: Date string to validate.
+
+    Returns:
+        tuple[bool, str]: (True, "") if valid, or (False, error_message) if invalid.
+    """
+    try:
+        parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return False, "Invalid date format. Please use YYYY-MM-DD (e.g., 2024-05-12)."
+
+    today = date.today()
+    if parsed_date < APOD_LAUNCH_DATE:
+        return False, f"Date cannot be before {APOD_LAUNCH_DATE.isoformat()} (APOD launch date)."
+    if parsed_date > today:
+        return False, f"Date cannot be in the future. Please select a date on or before today ({today.isoformat()})."
+
+    return True, ""
+
+
 class NasaService:
     """Service client for NASA public APIs."""
 
@@ -26,23 +52,14 @@ class NasaService:
         # In-memory daily cache: { "YYYY-MM-DD": apod_dict }
         self._apod_cache: Dict[str, Dict[str, Any]] = {}
 
+    def validate_apod_date(self, date_str: str) -> Tuple[bool, str]:
+        """Validate APOD date bounds and format."""
+        return validate_apod_date(date_str)
+
     def validate_date(self, date_str: str) -> Tuple[bool, Optional[str]]:
-        """Validate if a string is a valid APOD date (YYYY-MM-DD within the last year, not in future)."""
-        try:
-            parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return False, "Invalid date format. Please use YYYY-MM-DD (e.g., /apod 2026-10-30)."
-
-        today = date.today()
-        one_year_ago = today - timedelta(days=365)
-
-        if parsed_date > today:
-            return False, f"Date cannot be in the future. Please select a date on or before today ({today.isoformat()})."
-
-        if parsed_date < one_year_ago:
-            return False, f"Date must be within the last year (between {one_year_ago.isoformat()} and {today.isoformat()})."
-
-        return True, None
+        """Validate if a string is a valid APOD date (YYYY-MM-DD between 1995-06-16 and today)."""
+        is_valid, err = validate_apod_date(date_str)
+        return is_valid, err if not is_valid else None
 
     def safe_get(self, url: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Safely make a GET request to an external API with error logging."""

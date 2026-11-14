@@ -3,7 +3,7 @@ import logging
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import config
-from handlers.commands import apod, apod_callback, asteroids, help_cmd, start
+from handlers.commands import apod, apod_callback, asteroids, help_cmd, save_apod_callback, start
 from handlers.errors import on_error
 
 # Configure application logging
@@ -24,7 +24,8 @@ def create_app() -> Application:
     app.add_handler(CommandHandler("apod", apod))
     app.add_handler(CommandHandler("asteroids", asteroids))
 
-    # Register interactive callback query handlers for date selection
+    # Register interactive callback query handlers for date selection and favorites
+    app.add_handler(CallbackQueryHandler(save_apod_callback, pattern="^save_apod:"))
     app.add_handler(CallbackQueryHandler(apod_callback, pattern="^apod_"))
 
     # Register error handler

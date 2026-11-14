@@ -117,15 +117,15 @@ async def test_apod_handler_future_date_error(mock_update, mock_context):
 
 @pytest.mark.asyncio
 async def test_apod_handler_out_of_range_past_date_error(mock_update, mock_context):
-    """Verify error message when date is older than 1 year."""
-    old_date = (date.today() - timedelta(days=400)).isoformat()
+    """Verify error message when date is older than APOD launch date (1995-06-16)."""
+    old_date = "1990-01-01"
     mock_context.args = [old_date]
 
     await apod(mock_update, mock_context)
 
     mock_update.message.reply_text.assert_called_once()
     args, _ = mock_update.message.reply_text.call_args
-    assert "within the last year" in args[0].lower()
+    assert "1995-06-16" in args[0]
 
 
 @pytest.mark.asyncio
