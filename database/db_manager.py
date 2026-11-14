@@ -109,11 +109,17 @@ class DatabaseManager:
         return self.get_connection()
 
     def init_db(self) -> None:
-        """Create 3NF relational tables using DDL if they do not already exist."""
+        """Create 3NF relational tables and performance indexes using DDL if they do not already exist."""
         with self._get_connection() as conn:
             conn.execute(self.CREATE_USERS_TABLE_DDL)
             conn.execute(self.CREATE_SAVED_APODS_TABLE_DDL)
-        logger.info("Database initialized successfully with users and saved_apods tables.")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_saved_apods_saved_at ON saved_apods (saved_at DESC);"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_saved_apods_user_date ON saved_apods (user_id, apod_date DESC);"
+            )
+        logger.info("Database initialized successfully with users, saved_apods tables, and indexes.")
 
     def create_tables(self) -> None:
         """Alias for init_db."""
