@@ -1,0 +1,46 @@
+# Secrets and local config — never bake into the image
+.env
+*.env
+
+# SQLite databases — use a Docker volume instead
+*.db
+*.db-wal
+*.db-shm
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+.pytest_cache/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Git
+.git/
+.gitignore
+
+# Docs / reports (not needed in image)
+README.md
+PROJECT_BLUEPRINT.md
+TODO.md
+scripts/report_user_apods.sql
+scripts/run_report.py
+scripts/verify_sqlite.py
+
+# Test suite (not needed at runtime)
+tests/
+pytest.ini

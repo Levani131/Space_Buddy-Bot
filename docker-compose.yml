@@ -1,0 +1,47 @@
+# =============================================================================
+# SpaceBuddy — docker-compose.yml
+# =============================================================================
+# Usage:
+#   cp .env.example .env        # fill in BOT_TOKEN and NASA_API_KEY
+#   docker compose up -d        # build image and start in background
+#   docker compose logs -f      # tail live logs
+#   docker compose down         # stop and remove containers
+# =============================================================================
+
+services:
+  spacebuddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime          # skip the builder stage in final image
+    image: spacebuddy:latest
+    container_name: spacebuddy_bot
+    restart: on-failure:5
+
+    # Load secrets from your local .env file (never committed to Git)
+    env_file:
+      - .env
+
+    environment:
+      # Store the SQLite DB inside the named volume (overrides config.py default)
+      DATABASE_PATH: /app/data/space_buddy.db
+      LOG_LEVEL: INFO            # DEBUG | INFO | WARNING | ERROR
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      # Named volume keeps the database across container restarts / rebuilds
+      - spacebuddy_data:/app/data
+
+    # No ports needed — Telegram bot uses outbound long-polling only
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import bot"]
+      interval: 60s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  spacebuddy_data:
+    # Docker manages this volume; data persists until "docker compose down -v"
+    driver: local

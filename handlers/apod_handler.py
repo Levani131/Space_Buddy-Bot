@@ -230,21 +230,36 @@ async def save_apod_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         media_url = ""
 
     user_id = user.id if user else update.effective_chat.id
-    is_new = db.save_apod(
-        user_id=user_id,
-        apod_date=apod_date,
-        title=title,
-        media_url=media_url,
-    )
+    try:
+        is_new = db.save_apod(
+            user_id=user_id,
+            apod_date=apod_date,
+            title=title,
+            media_url=media_url,
+        )
+    except Exception as e:
+        logger.error(f"Database error saving APOD bookmark for user {user_id}: {e}", exc_info=True)
+        try:
+            await context.bot.answer_callback_query(
+                callback_query_id=query.id,
+                text="⚠️ Could not save bookmark. Please try again.",
+                show_alert=False,
+            )
+        except Exception:
+            pass
+        return
 
     toast_text = "⭐ Saved to favorites!" if is_new else "ℹ️ Already in your favorites!"
 
     # Show popup toast via bot.answer_callback_query
-    await context.bot.answer_callback_query(
-        callback_query_id=query.id,
-        text=toast_text,
-        show_alert=False,
-    )
+    try:
+        await context.bot.answer_callback_query(
+            callback_query_id=query.id,
+            text=toast_text,
+            show_alert=False,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to answer callback query for user {user_id}: {e}")
 
 
 async def apod_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

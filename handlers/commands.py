@@ -45,7 +45,19 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/help - Show all available commands"
     )
     if update.message:
-        await update.message.reply_text(help_text, parse_mode="Markdown")
+        try:
+            await update.message.reply_text(help_text, parse_mode="Markdown")
+        except Exception:
+            plain_help = (
+                "🌌 SpaceBuddy Commands:\n\n"
+                "/start - Greet the bot\n"
+                f"/apod [YYYY-MM-DD] - Get NASA's photo of the day (e.g. /apod 2024-05-12)\n"
+                f"   • Date Range: 1995-06-16 to {today_str}\n"
+                "   • Default: If no date is given, today's APOD is shown\n"
+                "/asteroids - View today's biggest approaching asteroids\n"
+                "/help - Show all available commands"
+            )
+            await update.message.reply_text(plain_help)
 
 
 async def asteroids(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -72,17 +84,36 @@ async def asteroids(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     sorted_neos = sorted(neos, key=lambda x: x["diameter_m"], reverse=True)
     top_5 = sorted_neos[:5]
 
-    response_lines = ["☄️ **Top 5 Biggest Asteroids Approaching Today:**\n"]
+    response_lines = ["☄️ Top 5 Biggest Asteroids Approaching Today:\n"]
+    plain_lines = ["☄️ Top 5 Biggest Asteroids Approaching Today:\n"]
     for i, ast in enumerate(top_5, 1):
         hazard_emoji = "⚠️ (Hazardous)" if ast["is_hazardous"] else "✅ (Safe)"
+        name = ast["name"]
+        # Escape special Markdown chars in asteroid names (parentheses, underscores, etc.)
+        name_escaped = (
+            name.replace("\\", "\\\\")
+            .replace("*", "\\*")
+            .replace("_", "\\_")
+            .replace("`", "\\`")
+            .replace("[", "\\[")
+        )
         response_lines.append(
-            f"*{i}. {ast['name']}* {hazard_emoji}\n"
+            f"*{i}. {name_escaped}* {hazard_emoji}\n"
+            f"   • Diameter: ~{ast['diameter_m']:.1f} meters\n"
+            f"   • Velocity: {ast['velocity_kmh']:,.0f} km/h\n"
+            f"   • Miss Distance: {ast['miss_distance_km']:,.0f} km\n"
+        )
+        plain_lines.append(
+            f"{i}. {name} {hazard_emoji}\n"
             f"   • Diameter: ~{ast['diameter_m']:.1f} meters\n"
             f"   • Velocity: {ast['velocity_kmh']:,.0f} km/h\n"
             f"   • Miss Distance: {ast['miss_distance_km']:,.0f} km\n"
         )
 
-    await update.message.reply_text("\n".join(response_lines), parse_mode="Markdown")
+    try:
+        await update.message.reply_text("\n".join(response_lines), parse_mode="Markdown")
+    except Exception:
+        await update.message.reply_text("\n".join(plain_lines))
 
 
 __all__ = [
